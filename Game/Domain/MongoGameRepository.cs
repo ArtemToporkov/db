@@ -8,38 +8,30 @@ namespace Game.Domain
     public class MongoGameRepository : IGameRepository
     {
         public const string CollectionName = "games";
+        private readonly IMongoCollection<GameEntity> _gameCollection;
 
-        public MongoGameRepository(IMongoDatabase db)
+        public MongoGameRepository(IMongoDatabase database)
         {
+            _gameCollection = database.GetCollection<GameEntity>(CollectionName);
         }
 
         public GameEntity Insert(GameEntity game)
         {
-            throw new NotImplementedException();
+            _gameCollection.InsertOne(game);
+            return game;
         }
 
-        public GameEntity FindById(Guid gameId)
-        {
-            throw new NotImplementedException();
-        }
+        public GameEntity FindById(Guid gameId) => _gameCollection.Find(g => g.Id == gameId).FirstOrDefault();
 
-        public void Update(GameEntity game)
-        {
-            throw new NotImplementedException();
-        }
+        public void Update(GameEntity game) => _gameCollection.ReplaceOne(g => g.Id == game.Id, game);
 
-        // Возвращает не более чем limit игр со статусом GameStatus.WaitingToStart
-        public IList<GameEntity> FindWaitingToStart(int limit)
-        {
-            //TODO: Используй Find и Limit
-            throw new NotImplementedException();
-        }
+        public IList<GameEntity> FindWaitingToStart(int limit) => _gameCollection
+            .Find(g => g.Status == GameStatus.WaitingToStart).Limit(limit).ToList();
 
-        // Обновляет игру, если она находится в статусе GameStatus.WaitingToStart
         public bool TryUpdateWaitingToStart(GameEntity game)
         {
-            //TODO: Для проверки успешности используй IsAcknowledged и ModifiedCount из результата
-            throw new NotImplementedException();
+            var result = _gameCollection.ReplaceOne(g => g.Id == game.Id && g.Status == GameStatus.WaitingToStart, game);
+            return result.IsAcknowledged && result.ModifiedCount == 1;
         }
     }
 }
