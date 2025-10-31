@@ -15,42 +15,42 @@ namespace Game.Domain
 
         public UserEntity Insert(UserEntity user)
         {
-            //TODO: Ищи в документации InsertXXX.
-            throw new NotImplementedException();
+            userCollection.InsertOne(user);
+            return user;
         }
 
         public UserEntity FindById(Guid id)
         {
-            //TODO: Ищи в документации FindXXX
-            throw new NotImplementedException();
+            return userCollection.Find(x => x.Id == id).FirstOrDefault();
         }
 
         public UserEntity GetOrCreateByLogin(string login)
         {
-            //TODO: Это Find или Insert
-            throw new NotImplementedException();
+            var user = userCollection.Find(x => x.Login == login).FirstOrDefault();
+            if (user is not null)
+                return user;
+            user = new UserEntity(Guid.NewGuid()) { Login = login };
+            userCollection.ReplaceOne(u => u.Id == user.Id, user, new ReplaceOptions { IsUpsert = true });
+            return user;
         }
 
-        public void Update(UserEntity user)
-        {
-            //TODO: Ищи в документации ReplaceXXX
-            throw new NotImplementedException();
-        }
+        public void Update(UserEntity user) => userCollection.ReplaceOne(u => u.Id == user.Id, user);
 
-        public void Delete(Guid id)
-        {
-            throw new NotImplementedException();
-        }
+        public void Delete(Guid id) => userCollection.DeleteOne(u => u.Id == id);
 
-        // Для вывода списка всех пользователей (упорядоченных по логину)
-        // страницы нумеруются с единицы
         public PageList<UserEntity> GetPage(int pageNumber, int pageSize)
         {
-            //TODO: Тебе понадобятся SortBy, Skip и Limit
-            throw new NotImplementedException();
+            var toSkip = (pageNumber - 1) * pageSize;
+            var totalCount = userCollection.CountDocuments(_ => true);
+            var users = userCollection
+                .Find(_ => true)
+                .SortBy(u => u.Login)
+                .Skip(toSkip)
+                .Limit(pageSize)
+                .ToList();
+            return new PageList<UserEntity>(users, totalCount, pageNumber, pageSize);
         }
 
-        // Не нужно реализовывать этот метод
         public void UpdateOrInsert(UserEntity user, out bool isInserted)
         {
             throw new NotImplementedException();
