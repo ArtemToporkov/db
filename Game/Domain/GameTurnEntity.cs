@@ -1,7 +1,22 @@
-namespace Game.Domain
+using System;
+using MongoDB.Bson.Serialization.Attributes;
+
+namespace Game.Domain;
+
+[BsonIgnoreExtraElements]
+public class GameTurnEntity
 {
-    public class GameTurnEntity
+    [BsonElement] public Guid GameId { get; }
+    [BsonElement] public int TurnIndex { get; }
+    [BsonElement] public PlayerDecisionInfo[] PlayersDecisions { get; }
+    [BsonElement] public Guid? WinnerId { get; }
+        
+    [BsonConstructor]
+    public GameTurnEntity(Guid gameId, int turnIndex, Guid? winnerId = null, params PlayerDecisionInfo[] playersDecisions)
     {
-        //TODO: Придумать какие свойства должны быть в этом классе, чтобы сохранять всю информацию о закончившемся туре.
+        GameId = gameId;
+        TurnIndex = turnIndex;
+        PlayersDecisions = playersDecisions;
+        WinnerId = winnerId;
     }
 }

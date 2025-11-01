@@ -1,5 +1,7 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
+using System.Text;
 using Game.Domain;
 using MongoDB.Driver;
 
@@ -9,7 +11,8 @@ namespace ConsoleApp
     {
         private readonly IUserRepository userRepo;
         private readonly IGameRepository gameRepo;
-        private readonly Random random = new Random();
+        private readonly IGameTurnRepository gameTurnRepo;
+        private readonly Random random = new();
         private const string DbName = "game-tests";
 
         private Program(string[] args)
@@ -21,9 +24,11 @@ namespace ConsoleApp
             
             db.DropCollection(MongoUserRepository.CollectionName);
             db.DropCollection(MongoGameRepository.CollectionName);
+            db.DropCollection(MongoGameTurnRepository.CollectionName);
             
             userRepo = new MongoUserRepository(db);
             gameRepo = new MongoGameRepository(db);
+            gameTurnRepo = new MongoGameTurnRepository(db);
         }
 
         public static void Main(string[] args)
@@ -42,11 +47,12 @@ namespace ConsoleApp
                 return;
             }
 
-            while (HandleOneGameTurn(humanUser.Id))
-            {
-            }
+            while (HandleOneGameTurn(humanUser.Id)) { }
 
             Console.WriteLine("Game is finished");
+            const int lastTurnsToShowCount = 5;
+            Console.WriteLine($"Info about last {lastTurnsToShowCount} turns:\n");
+            ShowScore(game);
             Console.ReadLine();
         }
 
@@ -135,11 +141,10 @@ namespace ConsoleApp
 
             if (game.HaveDecisionOfEveryPlayer)
             {
-                // TODO: Сохранить информацию о прошедшем туре в IGameTurnRepository. Сформировать информацию о закончившемся туре внутри FinishTurn и вернуть её сюда.
-                game.FinishTurn();
+                var turnInfo = game.FinishTurn();
+                gameTurnRepo.Insert(turnInfo);
             }
 
-            ShowScore(game);
             gameRepo.Update(game);
             return true;
         }
@@ -189,9 +194,25 @@ namespace ConsoleApp
 
         private void ShowScore(GameEntity game)
         {
-            var players = game.Players;
-            // TODO: Показать информацию про 5 последних туров: кто как ходил и кто в итоге выиграл. Прочитать эту информацию из IGameTurnRepository
-            Console.WriteLine($"Score: {players[0].Name} {players[0].Score} : {players[1].Score} {players[1].Name}");
+            var playerIdToNameMap = game.Players.ToDictionary(p => p.UserId, p => p.Name);
+            var lastFive = gameTurnRepo.GetLastTurns(game.Id, 5);
+            foreach (var turn in lastFive)
+            {
+                Console.WriteLine(GetRepresentationForGameTurn(turn, playerIdToNameMap));
+                Console.WriteLine();
+            }
+        }
+
+        private string GetRepresentationForGameTurn(GameTurnEntity gameTurn, Dictionary<Guid, string> playerIdToNameMap)
+        {
+            var sb = new StringBuilder();
+            sb.Append($"Result after turn {gameTurn.TurnIndex}:\n");
+            foreach (var playerDecisionInfo in gameTurn.PlayersDecisions.OrderBy(p => playerIdToNameMap[p.PlayerId]))
+                sb.Append($"{playerIdToNameMap[playerDecisionInfo.PlayerId]} " +
+                          $"threw {playerDecisionInfo.Decision.ToString()}. " +
+                          $"Score: {playerDecisionInfo.ScoreAfterDecision}.\n");
+            sb.Append($"Winner in this round: {(gameTurn.WinnerId is null ? "-" : playerIdToNameMap[gameTurn.WinnerId.Value])}");
+            return sb.ToString();
         }
     }
 }
