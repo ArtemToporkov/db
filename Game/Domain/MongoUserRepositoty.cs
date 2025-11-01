@@ -13,7 +13,7 @@ namespace Game.Domain
             userCollection = database.GetCollection<UserEntity>(CollectionName);
             var indexKeysDefinition = Builders<UserEntity>.IndexKeys.Ascending(nameof(UserEntity.Login));
             var indexOptions = new CreateIndexOptions { Unique = true };
-            userCollection.Indexes.CreateOne(new  CreateIndexModel<UserEntity>(indexKeysDefinition, indexOptions));
+            userCollection.Indexes.CreateOne(new CreateIndexModel<UserEntity>(indexKeysDefinition, indexOptions));
         }
 
         public UserEntity Insert(UserEntity user)

@@ -13,6 +13,10 @@ public class MongoGameTurnRepository : IGameTurnRepository
     public MongoGameTurnRepository(IMongoDatabase database)
     {
         gameTurnCollection = database.GetCollection<GameTurnEntity>(CollectionName);
+        var indexKeysDefinition = Builders<GameTurnEntity>.IndexKeys
+            .Ascending(nameof(GameTurnEntity.GameId))
+            .Descending(nameof(GameTurnEntity.TurnIndex));
+        gameTurnCollection.Indexes.CreateOne(new CreateIndexModel<GameTurnEntity>(indexKeysDefinition));
     }
 
     public GameTurnEntity Insert(GameTurnEntity gameTurn)
